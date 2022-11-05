@@ -3,6 +3,7 @@ const io = require("socket.io")(3001, {
   cors: {
     origin: [
       "http://localhost:3000",
+      "http://localhost:3001",
       "https://case-clicker.com",
       "http://case-clicker.com",
       "http://ws.case-clicker.com",
