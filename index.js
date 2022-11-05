@@ -1,7 +1,11 @@
 require("dotenv").config();
 const io = require("socket.io")(3001, {
   cors: {
-    origin: ["http://localhost:3000"],
+    origin: [
+      "http://localhost:3000",
+      "https://case-clicker.com",
+      "http://case-clicker.com",
+    ],
   },
 });
 const { v4: uuidv4 } = require("uuid");
