@@ -14,10 +14,10 @@ const { db } = require("./lib/database/mongodb");
 const { checkBet } = require("./lib/checkBet");
 const { RateLimiterMemory } = require("rate-limiter-flexible");
 
-const rateLimiter = new RateLimiterMemory({
+/* const rateLimiter = new RateLimiterMemory({
   points: 15,
   duration: 1,
-});
+}); */
 
 let games = [];
 
@@ -31,7 +31,7 @@ io.on("connection", (socket) => {
 
   socket.on("click", async () => {
     try {
-      await rateLimiter.consume(socket.handshake.address);
+      /* await rateLimiter.consume(socket.handshake.address); */
       const userstats = await db
         .collection("userstats")
         .findOne({ userId: token.userId });
