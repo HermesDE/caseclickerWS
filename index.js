@@ -12,6 +12,7 @@ const io = require("socket.io")(3001, {
   },
 });
 const { v4: uuidv4 } = require("uuid");
+const jwt = require("jsonwebtoken");
 
 const { db } = require("./lib/database/mongodb");
 const { checkBet } = require("./lib/checkBet");
@@ -26,7 +27,14 @@ let games = [];
 
 io.use((socket, next) => {
   const token = socket.handshake.auth;
-  token.userId ? next() : next(new Error("not authorized"));
+
+  jwt.verify(token.token, process.env.NEXTAUTH_SECRET, (err, decoded) => {
+    if (err) return next(new Error("invalid token"));
+
+    decoded.userId = decoded.id;
+    socket.handshake.auth = decoded;
+    decoded.id ? next() : next(new Error("not authorized"));
+  });
 });
 
 io.on("connection", (socket) => {
@@ -74,8 +82,8 @@ io.on("connection", (socket) => {
       id: uuidv4(),
       host: {
         id: token.userId,
-        name: token.user.name,
-        image: token.user.image,
+        name: token.name,
+        image: token.image,
       },
       bet: bet,
       guest: null,
