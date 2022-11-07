@@ -55,10 +55,6 @@ io.on("connection", (socket) => {
 //Create coinflip namespace
 const coinflip = io.of("/coinflip");
 coinflip.on("connection", async (socket) => {
-  /* const users = await coinflip.fetchSockets();
-  console.log(users.length);
-  coinflip.emit("users", users); */
-
   const token = socket.handshake.auth;
 
   socket.on("games", () => {
