@@ -18,6 +18,7 @@ const { sleep } = require("./lib/sleep");
 const { db } = require("./lib/database/mongodb");
 const { checkBet } = require("./lib/checkBet");
 const { RateLimiterMemory } = require("rate-limiter-flexible");
+const { randomBotName } = require("./lib/randomBotName");
 
 const rateLimiter = new RateLimiterMemory({
   points: 15,
@@ -88,6 +89,7 @@ coinflip.on("connection", async (socket) => {
     const gameObj = {
       id: uuidv4(),
       host: {
+        type: "player",
         id: token.userId,
         name: token.name,
         image: token.picture,
@@ -120,34 +122,49 @@ coinflip.on("connection", async (socket) => {
     coinflip.emit("deleteGame", game);
     coinflip.to(socket.id).emit("userstats", updatedUserStats.value);
   });
-  socket.on("joinGame", async (id) => {
+  socket.on("joinGame", async (id, bot) => {
     const game = games.find((game) => game.id === id);
-    //prevent joining own game
-    if (game.host.id === token.userId) return;
+
     //prevent joining if game is full
     if (game.guest) return;
 
-    const userstats = await db
-      .collection("userstats")
-      .findOne({ userId: token.userId });
+    let index;
+    if (bot) {
+      index = games.findIndex((game) => game.id === id);
 
-    if (userstats.tokens < game.bet) return;
-    const updatedUserStats = await db
-      .collection("userstats")
-      .findOneAndUpdate(
-        { userId: token.userId },
-        { $inc: { tokens: -game.bet } },
-        { returnDocument: "after" }
-      );
+      games[index].guest = {
+        type: "bot",
+        name: `Bot ${randomBotName()}`,
+        image:
+          "https://case-clicker.com/pictures/casino/coinflip/botProfilePicture.png",
+      };
+    } else {
+      //prevent joining own game
+      if (game.host.id === token.userId) return;
+      const userstats = await db
+        .collection("userstats")
+        .findOne({ userId: token.userId });
 
-    coinflip.to(socket.id).emit("userstats", updatedUserStats.value);
+      console.log(userstats);
+      if (userstats.tokens < game.bet) return;
+      const updatedUserStats = await db
+        .collection("userstats")
+        .findOneAndUpdate(
+          { userId: token.userId },
+          { $inc: { tokens: -game.bet } },
+          { returnDocument: "after" }
+        );
 
-    const index = games.findIndex((game) => game.id === id);
-    games[index].guest = {
-      id: token.userId,
-      name: token.name,
-      image: token.picture,
-    };
+      coinflip.to(socket.id).emit("userstats", updatedUserStats.value);
+
+      index = games.findIndex((game) => game.id === id);
+      games[index].guest = {
+        type: "player",
+        id: token.userId,
+        name: token.name,
+        image: token.picture,
+      };
+    }
     games[index].status = "full";
 
     //gamble result and pay user out
@@ -162,12 +179,14 @@ coinflip.on("connection", async (socket) => {
         );
     } else {
       games[index].winner = "guest";
-      await db
-        .collection("userstats")
-        .findOneAndUpdate(
-          { userId: game.guest.id },
-          { $inc: { tokens: parseInt(game.bet) * 2 } }
-        );
+      if (!bot) {
+        await db
+          .collection("userstats")
+          .findOneAndUpdate(
+            { userId: game.guest.id },
+            { $inc: { tokens: parseInt(game.bet) * 2 } }
+          );
+      }
     }
 
     coinflip.emit("joinedGame", games[index]);
