@@ -145,7 +145,6 @@ coinflip.on("connection", async (socket) => {
         .collection("userstats")
         .findOne({ userId: token.userId });
 
-      console.log(userstats);
       if (userstats.tokens < game.bet) return;
       const updatedUserStats = await db
         .collection("userstats")
