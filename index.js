@@ -205,3 +205,18 @@ coinflip.on("connection", async (socket) => {
     coinflip.to(socket.id).emit("userstats", userstats);
   });
 });
+
+//Create casebattle namespace
+const casebattle = io.of("/casebattle");
+casebattle.on("connection", (socket) => {
+  const token = socket.handshake.auth;
+
+  casebattle.emit("usercount", casebattle.sockets.size);
+  socket.on("disconnect", (reason) => {
+    casebattle.emit("usercount", casebattle.sockets.size);
+  });
+
+  socket.on("games", () => {
+    casebattle.to(socket.id).emit("games", games);
+  });
+});
