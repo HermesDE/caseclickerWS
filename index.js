@@ -19,6 +19,7 @@ const { db } = require("./lib/database/mongodb");
 const { checkBet } = require("./lib/checkBet");
 const { RateLimiterMemory } = require("rate-limiter-flexible");
 const { randomBotName } = require("./lib/randomBotName");
+const { createGame, getGames } = require("./lib/casebattle/games");
 
 const rateLimiter = new RateLimiterMemory({
   points: 15,
@@ -30,6 +31,7 @@ let games = [];
 //init middleware
 io.use(tokenMiddleware);
 io.of("/coinflip").use(tokenMiddleware);
+io.of("/casebattle").use(tokenMiddleware);
 
 io.on("connection", (socket) => {
   const token = socket.handshake.auth;
@@ -217,6 +219,17 @@ casebattle.on("connection", (socket) => {
   });
 
   socket.on("games", () => {
+    const games = getGames();
     casebattle.to(socket.id).emit("games", games);
+  });
+  socket.on("createGame", (data) => {
+    const newGame = createGame(data, token);
+
+    //emit new game to creator
+    casebattle.to(socket.id).emit("gameCreated", newGame.id);
+    //emit new game to all players in lobby
+    if (!newGame.isPrivate) {
+      casebattle.emit("newGame", newGame);
+    }
   });
 });
