@@ -41,13 +41,17 @@ io.on("connection", (socket) => {
       const userstats = await db
         .collection("userstats")
         .findOne({ userId: token.userId });
-      const newUserStats = await db
-        .collection("userstats")
-        .findOneAndUpdate(
-          { userId: token.userId },
-          { $inc: { money: userstats.moneyPerClick } },
-          { returnDocument: "after" }
-        );
+      const newUserStats = await db.collection("userstats").findOneAndUpdate(
+        { userId: token.userId },
+        {
+          $inc: {
+            money: userstats.moneyPerClick,
+            moneyEarned: userstats.moneyPerClick,
+            clicks: +1,
+          },
+        },
+        { returnDocument: "after" }
+      );
       io.to(socket.id).emit("click", newUserStats.value);
     } catch (ex) {
       io.to(socket.id).emit("blocked", ex.msBeforeNext);
@@ -178,22 +182,42 @@ coinflip.on("connection", async (socket) => {
     const random = Math.random();
     if (random < 0.5) {
       games[index].winner = "host";
-      await db
-        .collection("userstats")
-        .findOneAndUpdate(
-          { userId: game.host.id },
-          { $inc: { tokens: parseInt(game.bet) * 2 } }
-        );
+      await db.collection("userstats").findOneAndUpdate(
+        { userId: game.host.id },
+        {
+          $inc: {
+            tokens: parseInt(game.bet) * 2,
+            coinflips: +1,
+            coinflipsWon: +1,
+            tokensWon: parseInt(game.bet),
+          },
+        }
+      );
     } else {
       games[index].winner = "guest";
       if (!bot) {
-        await db
-          .collection("userstats")
-          .findOneAndUpdate(
-            { userId: game.guest.id },
-            { $inc: { tokens: parseInt(game.bet) * 2 } }
-          );
+        await db.collection("userstats").findOneAndUpdate(
+          { userId: game.guest.id },
+          {
+            $inc: {
+              tokens: parseInt(game.bet) * 2,
+              coinflips: +1,
+              coinflipsWon: +1,
+              tokensWon: parseInt(game.bet),
+            },
+          }
+        );
       }
+    }
+
+    const looserId = game.winner === "host" ? game.guest.id : game.host.id;
+    if (looserId) {
+      await db
+        .collection("userstats")
+        .findOneAndUpdate(
+          { userId: looserId },
+          { $inc: { coinflips: +1, tokensLost: parseInt(game.bet) } }
+        );
     }
 
     coinflip.emit("joinedGame", games[index]);
