@@ -38,16 +38,19 @@ io.on("connection", (socket) => {
   socket.on("click", async () => {
     try {
       await rateLimiter.consume(socket.handshake.address);
-      const userstats = await db
+
+      const userStats = await db
         .collection("userstats")
-        .findOne({ userId: token.userId });
+        .findOne({ userId: token.id });
       const newUserStats = await db.collection("userstats").findOneAndUpdate(
         { userId: token.userId },
+
         {
           $inc: {
-            money: userstats.moneyPerClick,
-            moneyEarned: userstats.moneyPerClick,
+            money: +userStats.moneyPerClick,
+            moneyEarned: +userStats.moneyPerClick,
             clicks: +1,
+            xp: 0.1,
           },
         },
         { returnDocument: "after" }
